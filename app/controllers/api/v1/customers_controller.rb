@@ -1,6 +1,6 @@
 module Api::V1
   class CustomersController < ApiController
-    before_action :find_customer, except: :index
+    before_action :find_customer, only: :update
     before_action :validate_params
     
     def index
@@ -12,7 +12,7 @@ module Api::V1
 
     def create
       @customer = Customer.new(customer_params)
-
+      
       if @customer.save
         render_data(CustomerSerializer.new(@customer, {}))
       else
@@ -21,9 +21,7 @@ module Api::V1
     end
 
     def update
-      @customer = Customer.new(customer_params)
-
-      if @customer.save
+      if @customer.update(customer_params)
         render_data(CustomerSerializer.new(@customer, {}))
       else
         render_activemodel_errors(@customer)
@@ -34,11 +32,11 @@ module Api::V1
 
     def filter_customers(customers, search_filters)
       if search_filters[:first_name].present?
-        customers = customers.where('first_name ILIKE (?)', search_filters[:first_name])
+        customers = customers.where("first_name ILIKE (?)", "%#{search_filters[:first_name]}%")
       end
 
       if search_filters[:last_name].present?
-        customers = customers.where('last_name ILIKE (?)', search_filters[:last_name])
+        customers = customers.where("last_name ILIKE (?)", "%#{search_filters[:last_name]}%")
       end
 
       if search_filters[:gender].present?
@@ -51,7 +49,7 @@ module Api::V1
     def validate_params
       errors = []
 
-      if params[:gender].present? && Customer.genders.key?(params[:gender])
+      if params[:gender].present? && !Customer.genders.key?(params[:gender])
         errors << "Gender cannot be in a given range"
       end
 
@@ -63,7 +61,7 @@ module Api::V1
     end
 
     def customer_params
-      params.params(:first_name, :last_name, :gender, :ph_no, :email)
+      params.permit(:first_name, :last_name, :gender, :ph_no, :email)
     end
     
     def find_customer

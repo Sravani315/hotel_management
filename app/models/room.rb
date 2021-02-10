@@ -7,4 +7,5 @@ class Room < ApplicationRecord
   has_many :bookings
 
   scope :available_rooms, -> { status_available }
+  scope :not_available_rooms, -> { status_not_available }
 end

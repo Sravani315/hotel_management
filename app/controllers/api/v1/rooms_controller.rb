@@ -7,15 +7,16 @@ module Api::V1
     def index
       rooms = Room.available_rooms
       rooms = rooms.page(params[:page]).per(params[:per_page])
-      render_data(RoomSerializer.new(rooms, { :include => [:room_type] }))
+      render_data(RoomSerializer.new(rooms, { :include => [:room_type, :'room_type.prices'] }))
     end
 
     def check_in
       @booking = @room.bookings.new(check_in_params)
       @booking.check_in = Time.now
-      
-      if @bookings.save
-        render_data(BookingSerializer.new(@booking, { :include => [:room, :customer]}))
+
+      if @booking.save
+        @room.update(status: :not_available)
+        render_data(BookingSerializer.new(@booking, { :include => [:room, :customer] }))
       else
         render_activemodel_errors(@booking)
       end
@@ -24,8 +25,9 @@ module Api::V1
     def check_out
       @booking.check_out = Time.now
       
-      if @bookings.save
-        render_data(render_data(BookingSerializer.new(@booking, { :include => [:room, :customer]})))
+      if @booking.save
+        @room.update(status: :available)
+        render_data(render_data(BookingSerializer.new(@booking, { :include => [:room, :customer] })))
       else
         render_activemodel_errors(@booking)
       end
@@ -36,15 +38,15 @@ module Api::V1
     def validate_check_in_params
       errors = []
       customer = Customer.find(params[:customer_id])
-      error << "Room has already booked" if @room.status_not_available
+      error << "Room has already booked" if @room.status_not_available?
       render_error(errors) if errors.any?
     end
 
-    def validate_check_in_params
+    def validate_check_out_params
       errors = []
       @booking = @room.bookings.last
-      error << "Room has not booked" if @room.status_available
-      error << "Customer has already vacated this Room" if @bookings.check_out.present?
+      error << "Room has not booked" if @room.status_available?
+      error << "Customer has already vacated this Room" if @booking&.check_out&.present?
       render_error(errors) if errors.any?
     end
 
@@ -52,7 +54,7 @@ module Api::V1
       params.permit(:customer_id)
     end
     
-    def room
+    def find_room
       @room = Room.find(params[:id])
     end 
   end

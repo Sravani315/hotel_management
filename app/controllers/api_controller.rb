@@ -6,8 +6,8 @@ class ApiController < ActionController::API
     render_data(error, status)
   end
 
-  def render_activemodel_errors(errors)
-    render_error( model.errors.full_messages.join(','), :bad_request)
+  def render_activemodel_errors(model)
+    render_error(model.errors.full_messages, :bad_request)
   end
 
   def render_404
